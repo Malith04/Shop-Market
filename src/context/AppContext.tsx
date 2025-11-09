@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { AppState, Product, Customer, Sale, User, CartItem, DashboardStats } from '../types';
 
 interface AppContextType {
@@ -36,6 +36,22 @@ const initialState: AppState = {
   isAuthenticated: false,
   dashboardStats: null,
 };
+
+const STORAGE_KEY = 'shop_market_app_state_v1';
+
+function loadPersistedState(): AppState {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return initialState;
+    const parsed = JSON.parse(raw);
+    return {
+      ...initialState,
+      ...parsed,
+    } as AppState;
+  } catch (_e) {
+    return initialState;
+  }
+}
 
 const appReducer = (state: AppState, action: AppAction): AppState => {
   switch (action.type) {
@@ -125,7 +141,15 @@ interface AppProviderProps {
 }
 
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
-  const [state, dispatch] = useReducer(appReducer, initialState);
+  const [state, dispatch] = useReducer(appReducer, initialState, loadPersistedState);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (_e) {
+      // ignore persistence errors (e.g., storage full or disabled)
+    }
+  }, [state]);
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>
